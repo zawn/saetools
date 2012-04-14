@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+		   width="400" height="20" alpha="0.9" backgroundColor="#DFDFDF">
+	
+	<mx:Script>
+		<![CDATA[
+			public var file_name:String = "";
+			public var file_item_id:String = "";
+		]]>
+	</mx:Script>
+	<mx:Label id="file_name_label" x="10" y="0" width="100%" height="100%" fontSize="13"/>
+</mx:Canvas>

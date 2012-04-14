@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   showStatusBar="false">
+	<fx:Script>
+		<![CDATA[
+			import com.zext.SAEToolsHandler;
+			import com.zext.temp.CustomHost;
+			
+			import flash.html.*;
+			
+			import mx.controls.Alert;
+			import mx.core.UIComponent;
+			import mx.events.FileEvent;
+			import mx.events.FlexNativeWindowBoundsEvent;
+			import mx.events.ListEvent;
+			
+			import org.osmf.elements.HTMLElement;
+			
+			import spark.components.Scroller;
+			import spark.components.VGroup;
+			
+			
+			private var file:File = new File;
+			
+			public static var progressView:VGroup = new VGroup;// 引用
+			private var s:Scroller = new Scroller;	
+			
+			protected function back_clickHandler(event:MouseEvent):void
+			{
+				htmlContainer.htmlLoader.historyBack();
+			}
+			
+			protected function forward_clickHandler(event:MouseEvent):void
+			{
+				htmlContainer.htmlLoader.historyForward();
+			}
+			
+			protected function refresh_clickHandler(event:MouseEvent):void
+			{
+				htmlContainer.htmlLoader.reload();
+			}
+			
+			protected function loading_clickHandler(event:MouseEvent):void
+			{
+				URLRequestDefaults.userAgent = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:11.0) Gecko/20100101 Firefox/11.0";
+				var url:String = urlString.text; 
+				if(url==""){
+					url = "sae.sina.com.cn/?m=myapp";
+					urlString.text = url;
+				}
+				if(!url.match("^http://")){
+					url = "http://"+url;
+				}
+				
+				if(url.match("^(http://(([0-9a-zA-Z])+([-\w]*[0-9a-zA-Z])*\.)+[0-9a-zA-Z]{2,9})"))
+				{
+					var urlReq:URLRequest = new URLRequest(url); 
+					urlReq.requestHeaders.push(new URLRequestHeader("Host", "sae.sina.com.cn"));
+					urlReq.requestHeaders.push(new URLRequestHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
+					urlReq.requestHeaders.push(new URLRequestHeader("Accept-Language", "zh-cn,zh;q=0.8,en-us;q=0.5,en;q=0.3"));
+					urlReq.requestHeaders.push(new URLRequestHeader("Accept-Encoding", "gzip, deflate"));
+					urlReq.requestHeaders.push(new URLRequestHeader("DNT", "1"));
+					urlReq.requestHeaders.push(new URLRequestHeader("Referer", "http://sae.sina.com.cn/"));
+					htmlContainer.htmlLoader.addEventListener(Event.COMPLETE,htmlCompleteHandler);
+					htmlContainer.htmlLoader.load(urlReq);
+				}else{
+					Alert.show("非法地址："+url);
+				}
+				
+			} 
+			
+			private function htmlCompleteHandler(event:Event):void 
+			{ 
+				uploadBtn.enabled = true;
+			} 
+			
+			private function dispatchLocationChange (e:Event):void
+			{
+				urlString.text =  htmlContainer.location
+			}
+			
+			protected function upload_clickHandler(event:MouseEvent):void
+			{
+				this.backBtn.enabled = false;
+				this.forwardBtn.enabled = false;
+				this.loadingBtn.enabled = false;
+				this.refreshBtn.enabled = false;
+				
+				var html:HTMLLoader = htmlContainer.htmlLoader;
+				var o:Object = html.window.document.getElementsByName("flashvars");
+				if(o.length>0){
+					var flashvars:String = o[0].value;
+					var lines:Array = flashvars.split("&");
+					var flashvarKeyValue:Object = new Object;
+					for (var i:Number=0; i < lines.length; i++) {
+						var name_value:String = String(lines[i]);
+						var index_of_equals:Number = name_value.indexOf("=");
+						if (index_of_equals > 0) {
+							flashvarKeyValue[decodeURIComponent(name_value.substring(0, index_of_equals))] =  decodeURIComponent(name_value.substr(index_of_equals + 1));
+						}
+					}
+					flashvarKeyValue["uploadURL"] = "http://192.168.1.9:8080/FlexApp/uploader.do"+flashvarKeyValue["uploadURL"];
+					var params:Object = new Object;
+					var param_string:String = flashvarKeyValue["params"] as String ;
+					if (param_string != null) {
+//						param_string =  decodeURIComponent(param_string);
+						var name_value_pairs:Array = param_string.split("&amp;");
+						
+						for ( i= 0; i < name_value_pairs.length; i++) {
+							name_value = String(name_value_pairs[i]);
+							index_of_equals = name_value.indexOf("=");
+							if (index_of_equals > 0) {
+								params[decodeURIComponent(name_value.substring(0, index_of_equals))] = decodeURIComponent(name_value.substr(index_of_equals + 1));
+							}
+						}
+					}
+					file.addEventListener(Event.SELECT, function():void{
+						dirSelected(event,params,flashvarKeyValue);
+					}); 
+					file.browseForDirectory("请选择目录"); 
+				}else{
+					Alert.show("获取参数失败.请确人已近打开上传对话框!");
+				}
+			}
+			private function dirSelected(event:Event,params:Object,flashvar:Object):void {
+				if(file.isDirectory){
+					
+					// 进度视图
+//					var s:Scroller = new Scroller;					
+					s.x = 10;
+					s.y = 50;
+					s.percentHeight = 100;
+					s.width = 500;
+					s.name = "debugWin";
+					this.addElement(s);
+					s.viewport = progressView;
+//					s.addElement(progressView);
+					
+					var url:String = "http://sae.sina.com.cn/?m=storage"; 
+					var toolsHandler:SAEToolsHandler = new SAEToolsHandler(file,url,params,flashvar);
+					toolsHandler.SetDebugEnabled(false);
+					toolsHandler.start()
+				}else{
+					Alert.show("请选择目录");
+				}
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+//				this.s.viewport = null;
+				this.s.parent.removeChild(this.s);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<mx:HTML id="htmlContainer" x="0" y="25" width="100%" height="100%"
+			 locationChange="dispatchLocationChange(event)"/>
+	<s:Button id="backBtn" x="9" y="2" label="后退" click="back_clickHandler(event)"/>
+	<s:Button id="forwardBtn" x="81" y="2" label="前进" click="forward_clickHandler(event)"/>
+	<s:Button id="refreshBtn" x="153" y="2" label="刷新" click="refresh_clickHandler(event)"/>
+	<s:Button id="loadingBtn" x="225" y="2" label="载入" click="loading_clickHandler(event)"/>
+	<s:TextInput id="urlString" x="298" y="2" width="465"/>
+	<s:Button id="uploadBtn" x="10" y="26" label="上传" click="upload_clickHandler(event)"
+			  enabled="false"/>
+	<s:Button x="83" y="27" label="按钮" click="button1_clickHandler(event)"/>
+</s:WindowedApplication>
